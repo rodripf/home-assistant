@@ -7,9 +7,6 @@ import voluptuous as vol
 
 from homeassistant.core import callback
 from homeassistant.components import zone
-from homeassistant.components.group import (
-    ATTR_ADD_ENTITIES, ATTR_ENTITIES, ATTR_OBJECT_ID, ATTR_VISIBLE,
-    DOMAIN as DOMAIN_GROUP, SERVICE_SET)
 from homeassistant.components.zone.zone import async_active_zone
 from homeassistant.config import load_yaml_config_file, async_log_exception
 from homeassistant.exceptions import HomeAssistantError
@@ -44,7 +41,6 @@ from .const import (
 )
 
 YAML_DEVICES = 'known_devices.yaml'
-GROUP_NAME_ALL_DEVICES = 'all devices'
 EVENT_NEW_DEVICE = 'device_tracker_new_device'
 
 
@@ -81,7 +77,6 @@ class DeviceTracker:
         self.track_new = track_new if track_new is not None \
             else defaults.get(CONF_TRACK_NEW, DEFAULT_TRACK_NEW)
         self.defaults = defaults
-        self.group = None
         self._is_updating = asyncio.Lock(loop=hass.loop)
 
         for dev in devices:
@@ -152,16 +147,6 @@ class DeviceTracker:
         if device.track:
             await device.async_update_ha_state()
 
-        # During init, we ignore the group
-        if self.group and self.track_new:
-            self.hass.async_create_task(
-                self.hass.async_call(
-                    DOMAIN_GROUP, SERVICE_SET, {
-                        ATTR_OBJECT_ID: util.slugify(GROUP_NAME_ALL_DEVICES),
-                        ATTR_VISIBLE: False,
-                        ATTR_NAME: GROUP_NAME_ALL_DEVICES,
-                        ATTR_ADD_ENTITIES: [device.entity_id]}))
-
         self.hass.bus.async_fire(EVENT_NEW_DEVICE, {
             ATTR_ENTITY_ID: device.entity_id,
             ATTR_HOST_NAME: device.host_name,
@@ -183,23 +168,6 @@ class DeviceTracker:
             await self.hass.async_add_executor_job(
                 update_config, self.hass.config.path(YAML_DEVICES),
                 dev_id, device)
-
-    @callback
-    def async_setup_group(self):
-        """Initialize group for all tracked devices.
-
-        This method must be run in the event loop.
-        """
-        entity_ids = [dev.entity_id for dev in self.devices.values()
-                      if dev.track]
-
-        self.hass.async_create_task(
-            self.hass.services.async_call(
-                DOMAIN_GROUP, SERVICE_SET, {
-                    ATTR_OBJECT_ID: util.slugify(GROUP_NAME_ALL_DEVICES),
-                    ATTR_VISIBLE: False,
-                    ATTR_NAME: GROUP_NAME_ALL_DEVICES,
-                    ATTR_ENTITIES: entity_ids}))
 
     @callback
     def async_update_stale(self, now: dt_util.dt.datetime):

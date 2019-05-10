@@ -5,7 +5,6 @@ import voluptuous as vol
 
 from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.loader import bind_hass
-from homeassistant.components import group
 from homeassistant.config import config_without_domain
 from homeassistant.helpers import discovery
 import homeassistant.helpers.config_validation as cv
@@ -43,8 +42,6 @@ from .const import (
     SOURCE_TYPE_GPS,
     SOURCE_TYPE_ROUTER,
 )
-
-ENTITY_ID_ALL_DEVICES = group.ENTITY_ID_FORMAT.format('all_devices')
 
 SERVICE_SEE = 'see'
 
@@ -84,11 +81,9 @@ SERVICE_SEE_PAYLOAD_SCHEMA = vol.Schema(vol.All(
 
 
 @bind_hass
-def is_on(hass: HomeAssistantType, entity_id: str = None):
+def is_on(hass: HomeAssistantType, entity_id: str):
     """Return the state if any or a specified device is home."""
-    entity = entity_id or ENTITY_ID_ALL_DEVICES
-
-    return hass.states.is_state(entity, STATE_HOME)
+    return hass.states.is_state(entity_id, STATE_HOME)
 
 
 def see(hass: HomeAssistantType, mac: str = None, dev_id: str = None,
@@ -145,8 +140,6 @@ async def async_setup(hass: HomeAssistantType, config: ConfigType):
 
     if setup_tasks:
         await asyncio.wait(setup_tasks, loop=hass.loop)
-
-    tracker.async_setup_group()
 
     async def async_platform_discovered(p_type, info):
         """Load a platform."""
